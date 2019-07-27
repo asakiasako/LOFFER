@@ -1,0 +1,90 @@
+---
+layout: post
+title: 理解node.js事件轮询
+date: 2019-07-13
+Author: MinimaLife
+tags: [tech, coding, node.js, javascript]
+comments: true
+toc: false
+pinned: false
+---
+> 转载自 https://www.jianshu.com/p/6bbd7f1035aa，版权归原作者所有，译文版权归译者所有。
+
+在ManUel Kiessling的[《The Node Beginner Book》](https://link.jianshu.com/?t=http%3A%2F%2Fwww.nodebeginner.org%2Findex-zh-cn.html)中提到了Node.js的事件轮询。
+
+其中提到Mixu的博文：[《Understanding the node.js event loop》](https://link.jianshu.com/?t=http%3A%2F%2Fblog.mixu.net%2F2011%2F02%2F01%2Funderstanding-the-node-js-event-loop%2F)
+
+原文出处：http://blog.mixu.net/2011/02/01/understanding-the-node-js-event-loop/
+
+以下是我的译文：
+
+关于Node.js的第一个基本概念是I/O操作的开销是巨大的：
+
+![The-cost-of-IO](https://upload-images.jianshu.io/upload_images/18649475-483abdb4814cdcdb.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+因此在现代编程技术中，等待I/O操作完成是最浪费时间的。这里列举了几种方式来解决这种性能影响，（来自 Sam Rushing）：
+* **同步处理**：你一次处理一个请求，每个请求依次处理。优点：简单；缺点：任何一个请求都会阻塞其他请求。
+* **开启一个新进程**：你为每个请求开启一个新的进程。优点：简单；缺点：不利于扩展，大量的链接意味着大量的进程。fork()是Unix编程的一个锤子，因为它非常有用，因此常被过度使用来解决任何看起来像一个钉子的问题。
+* **线程**：为每个请求开启一个新的线程。优点：简单，而且比开启新进程对内核更友好，因为线程的开销通常会更小一些；缺点：不是所有的机器都支持线程，而且对于要处理共享资源的情况，多线程会很快变得过于复杂。
+
+第二个基本概念是，如果要为每个线程都开启一个新的链接，这样的内存开销是巨大的（比如：和Nginx相比之下，Apache内存耗尽的情况）。
+
+Apache是多线程的：它为每个请求开启一个新的线程（或进程，这取决于实际配置）。随着并发连接数量的增加，以及需要更多线程同时为多个的客户端服务时，你可以看到它是如何消耗内存的。Nginx和Node.js不是多线程的，因为线程和进程的内存开销太大了。它们是单线程、基于事件的。它解决了处理众多连接所产生的线程/进程的消耗的问题。
+
+## Node.js让你的代码保持单线程...
+
+它是真的只有一个线程在运行：你不能并行地执行程序；例如模拟一个"sleep"会阻塞服务器一秒钟：
+
+``` es6
+while(new Date().getTime() < now + 1000) {  
+   // do nothing  
+}
+```
+
+因此当上面这段代码在执行的时候，node.js将不会响应任何其它来自客户端的请求，因为它只能有一个线程来执行你的代码。此外，如果你执行cpu密集任务，比如重设图像的大小，它也会阻塞所有请求。
+
+## ...然而，除了你的代码，其它的一切都是并行执行的
+
+单线程没办法让代码并行执行。然而，所有的 I/O 都是事件驱动、异步的。所以下面的代码不会阻塞server：
+
+``` es6
+ c.query(
+   'SELECT SLEEP(20);',
+   function (err, results, fields) {
+     if (err) {
+       throw err;
+     }
+     res.writeHead(200, {'Content-Type': 'text/html'});
+     res.end('&lt;html&gt;&lt;head&gt;&lt;title&gt;Hello&lt;/title&gt;&lt;/head&gt;&lt;body&gt;&lt;h1&gt;Return from async DB query&lt;/h1&gt;&lt;/body&gt;&lt;/html&gt;');
+     c.end();
+    }
+);
+```
+
+如果你在一次请求中执行上面的代码，当数据库sleep时，其它请求也会被立即处理。
+
+## 为什么异步更好？我们应该什么时候从同步转移到异步/并行执行呢？
+
+使用同步执行也是不错的，因为它简化了代码的编写（相比于多线程，并发性问题有导致WTFs的趋势）（译者注：WTF ===What The Fuck）。
+
+在Node.js中，你不必担心后台是怎么处理的：当你在做I/O操作时只需要使用回调就可以了；而且它保证了你的代码永远不会中断，I/O操作不会阻塞其它请求，同时也无需承担每个请求所产生的线程/进程的开销成本（例如Apache中的内存开销）。
+
+在I/O操作中使用异步是很好的选择，因为I/O操作的开销比单纯地执行代码要高得多，我们不应该单纯地等待I/O操作，而是应该在这时做一些事情。
+
+![Bucket](https://upload-images.jianshu.io/upload_images/18649475-579c1469cb98e6a8.gif?imageMogr2/auto-orient/strip)
+
+事件轮询是“一个掌握和处理外部事件并且把他们转成回调调用的实体”。因此I/O调用的同时，server就可以去处理另一个请求。在一次I/O调用中，你的代码会保存回调函数并把控制权返回到node.js运行时。当数据可访问时，就可以执行这个回调了。
+
+当然，在后端，还是有[数据库访问和流程执行的线程和进程](https://link.jianshu.com/?t=https%3A%2F%2Fstackoverflow.com%2Fquestions%2F3629784%2Fhow-is-node-js-inherently-faster-when-it-still-relies-on-threads-internally)。但是，这些都不需要你的代码直接实现，因此除了了解I/O交互之外，你不了解它们。比如，从每个请求的角度来看，数据库或其它流程需要异步，因为这些线程的结果会通过事件轮询返回给你代码。和Apache模块相比，它省去了许多内存的消耗，因为不是每个链接都需要更新线程；只有当你真正确定某些进程是并行运行时才会更新线程，即使这样的操作也是通过Node.js来处理的。
+
+除了I/O调用以外，Node.js所期望的所有请求都能被快速返回；比如[CPU密集型任务分解到另一个可与事件交互的进程](https://link.jianshu.com/?t=https%3A%2F%2Fstackoverflow.com%2Fquestions%2F3491811%2Fnode-js-and-cpu-intensive-requests)，或使用[WebWorkers](https://link.jianshu.com/?t=https%3A%2F%2Fblog.std.in%2F2010%2F07%2F08%2Fnodejs-webworker-design%2F)等抽象交互时。这（显然）意味你不能并行执行你的代码，除非后台有个另一个线程，你可以通过事件与之交互。基本上，所有发出事件的对象（例如 EventEmitter实例）都支持异步均衡交互。并且可以用这种方式组织代码交互，比如在Node.js中使用文件、套接字或子进程等EventEmitters。多核可以使用这种方法；另见：node-http-proxy。
+
+#### 内部实现
+
+在[内部](https://link.jianshu.com/?t=https%3A%2F%2Fgithub.com%2Fnodejs%2Fnode-v0.x-archive%2Ftree%2Fmaster%2Fdeps)，node.js依靠[libev](https://link.jianshu.com/?t=http%3A%2F%2Fsoftware.schmorp.de%2Fpkg%2Flibev.html)来提供事件轮询，这是[libeio](https://link.jianshu.com/?t=http%3A%2F%2Fsoftware.schmorp.de%2Fpkg%2Flibeio.html)的补充，它使用线程池来提供异步I/O操作。要了解更多信息，请参阅[libev文档](https://link.jianshu.com/?t=http%3A%2F%2Fpod.tst.eu%2Fhttp%3A%2F%2Fcvs.schmorp.de%2Flibev%2Fev.pod)。
+
+因此我们应该如何在Node.js中实现异步？
+
+Tim Caswell在他的演讲中描述了这些模式：
+* First-class Function(译者注：该类型的值可以作为函数的参数和返回值，也可赋给变量)。比如，我们将函数作为数据传递，并在需要时执行它们。
+* Function composition。又称为匿名函数或闭包，在基于时间的I/O中发生某种事件时执行。

@@ -1,0 +1,103 @@
+---
+layout: post
+title: 利用相对单位构建 Vue 项目
+date: 2019-07-09
+Author: MinimaLife
+tags: [tech, coding, Vue, javascript]
+comments: true
+toc: false
+pinned: false
+---
+这次公司的产品要参加某国际展会，需要为产品做一个 Demo 软件对其进行控制和展示（采用 electron + vue 的架构），这就跟平常的需求不同了。一般来说，响应式适配通常是保持内容元素的大小不变（或变化较小），而改变内容显示区域的大小以显示更多/更少的内容。而在展会上，考虑到观众是从远处观看屏幕，而且内容是固定的，因此合适的解决办法是等比例缩放所有内容，这样在笔记本上进行配置和在大显示器上进行展示时，都能获得较好的显示效果。
+
+要等比例适配 UI，那就需要用到相对单位。在 CSS3 中，新增了许多相对单位，例如 rem, vw, vh, vmin, vmax 等。
+
+目前传统中使用较多的方法是使用 rem，它以根元素字体大小作为单位。如果我们要根据窗口宽度来等比例缩放所有元素，就必须使用一段 js 代码，来动态的改变根元素字体的大小。这样就造成了 CSS 和 js 无法解耦。
+
+vw 单位是相对于视窗宽度的单位，1 vw 等于 1/100 视窗宽度。和百分比的单位的区别在于，它是直接相对于视窗宽度的，而百分比是相对于其父元素 – 如果父元素指定了明确的宽度的话。使用这个单位，就能用纯 CSS 的方式来实现等比例缩放，与 js 解耦。之前该单位可能存在兼容性的问题，但如今在主流浏览器上应该都得到了比较好的支持了。而且我们是 electron 环境，没有考虑兼容性的必要。后面三个单位是类似的，分别是相对于视窗高度，以及 vw/vh 中的最小、最大值。
+
+## 总体思路：
+
+很容易想到，基本的思路就是将所有长度单位都用 vw 代替，包括字体大小。但是通常，我们在项目中会用到一些组件库，例如 element-ui，如果所有的组件都进行样式重构，那太要命了。所以我们需要用一些插件自动的将 css 和 scss 中的单位转换过来，包括 vue 单文件组件中 style 区域的内容。
+
+另外，我们还需要将 vue 组件中的内联样式，也转换成 vw 相对单位。但这一步还没有现成的完美的解决办法。
+
+所以总体思路大致如下：
+1. 确定一个视窗大小，作为原始像素单位的基准大小。例如我设置为 1280px 宽，那么如果缩放到 2560px，原来 1px 的线条就变成了 2px 宽了。
+2. 你可以使用 vw 为单位，来编写自己的 css ，或是使用 px 编写，这都无所谓，统一就好，因为我们最终会将 px 转换为 vw。如果你使用 px 作为你编写 css 的单位，记得在调试时将视窗调整为第一步中设定的视窗大小。
+3. 使用 postcss-loader 对 css 进行处理，将所有 css, scss, vue 组件中的 px 单位转换为 vw, 使用的插件为 postcss-px-to-viewport 。这一步主要是为了将外部组件库中的单位转换为 vw。如果你在第二部中使用了 px 作为单位，它也会进行转换。
+
+## 配置 postcss-loader:
+
+在项目的根目录，添加 postcss.config.js，主要是配置 postcss-px-to-viewport 这个 plugin。关于其中的选项，可以到 postcss-px-to-viewport 的 github 页面查看。
+
+``` python
+module.exports = {
+  plugins: {
+    'postcss-px-to-viewport': {
+      unitToConvert: 'px',
+      viewportWidth: 1280,
+      viewportHeight: 720, // not now used; TODO: need for different units and math for different properties
+      unitPrecision: 5,
+      propList: [''],
+      viewportUnit: 'vw',
+      fontViewportUnit: 'vw', // vmin is more suitable.
+      selectorBlackList: [],
+      minPixelValue: 0,
+      mediaQuery: false,
+      replace: true,
+      exclude: [] // ignore some files
+    }
+  }
+}
+```
+
+## 配置 webpack
+
+上一步我们定义了 postcss 应该干什么，这一步就是要将 postcss loader 应用到不同的文件类型里面。
+
+对于 vue 组件，官网文档里提到：
+
+> vue-loader 支持通过 postcss-loader 自动加载同一个配置文件
+
+因此我们可以直接使用，而不需要进行额外的配置，也没有必要在 <style> 区块中显式的将 lang 设置为 postcss。更多信息请参考官方网站：https://vue-loader-v14.vuejs.org/zh-cn/features/postcss.html
+
+关于 postcss-loader 插件的位置，根据官网的描述，需要加在任何预处理器（如 sass, scss）之前，在 css-loader 之后。如果 postcss-loader 加在预处理器之后的话，通过 scss 等文件中的 @import 语句引入的样式，将无法应用到 postcss-loader 的效果。
+
+我是用 electron-vue 构建的项目，所以我更改的是 webpack.renderer.config.js。
+
+``` javascript
+{
+  test: /\.css$/,
+  use: ExtractTextPlugin.extract({
+    fallback: 'style-loader',
+    use: ['css-loader', 'postcss-loader']
+  })
+},
+{
+  test: /\.scss$/,
+  use: [ 'style-loader', 'css-loader', 'postcss-loader', 'sass-loader' ]
+},
+{
+  test: /\.vue$/,
+  use: {
+    loader: 'vue-loader',
+    options: {
+      extractCSS: process.env.NODE_ENV === 'production',
+      loaders: {
+        sass: 'vue-style-loader!css-loader!postcss-loader!sass-loader?indentedSyntax=1&data=@import "./src/renderer/styles/global-vars"',
+        scss: 'vue-style-loader!css-loader!postcss-loader!sass-loader?data=@import "./src/renderer/styles/global-vars";'
+      }
+    }
+  }
+},
+...
+```
+
+只需要将 postcss-loader 这个字段添加到合适的位置就可以了，不用做其它更改，唯一需要注意的是添加的位置：在预处理器之前，在 css-loader 之后。
+
+## 转换 vue 单文件组件中的内联样式
+
+对于这个需求，有朋友做了一个 loader, 可以将 vue 单文件组件中内联样式中的 px 单位转换为 vw。但是，由于该 loader 只是针对 .vue 文件做文本替换，对于某些渲染出来的组件（例如 element-ui 中的 switch 组件，接收 width = int 参数，最后渲染成 px 的值），无法生效。由于这一点涉及到的影响不大，暂时未做处理，手动添加一些 css 即可。
+
+大家可以直接查看项目页面。https://github.com/hyy1115/style-vw-loader
