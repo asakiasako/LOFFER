@@ -442,6 +442,9 @@ nav {
 // Posts
 
 .posts{
+  p {
+    word-break: break-all;
+  }
 
   .tag {
     display: inline;
