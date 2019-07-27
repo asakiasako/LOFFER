@@ -74,6 +74,7 @@ h6 {
 p {
   color: $text-color;
   margin: 1em 0;
+  word-wrap: break-word;
 }
 
 a {
@@ -442,9 +443,6 @@ nav {
 // Posts
 
 .posts{
-  p {
-    word-wrap: break-word;
-  }
 
   .tag {
     display: inline;
