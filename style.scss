@@ -44,7 +44,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1, h2, h3, h5 {
-  font-weight: 500;
+  font-weight: bold;
 }
 
 h1 {
@@ -96,7 +96,7 @@ em, i {
 }
 
 strong, b {
-  font-weight: 500;
+  font-weight: bold;
 }
 
 sub {
@@ -185,7 +185,7 @@ dt {
   clear: left;
   text-align: right;
   white-space: nowrap;
-  font-weight: 500;
+  font-weight: bold;
   margin-bottom: $li-bottom-space;
 
   @include mobile {
@@ -535,7 +535,7 @@ nav {
   &:before{
     content:"目录";
     margin: 0 0 1em 1em;
-    font-weight: 500;
+    font-weight: 700;
     font-size: 1.2em;
     display: block;
     padding-bottom: 0.6em;
