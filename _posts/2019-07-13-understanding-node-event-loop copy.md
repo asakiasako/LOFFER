@@ -11,7 +11,7 @@ pinned: false
 > 转载自 https://www.jianshu.com/p/6bbd7f1035aa，版权归原作者所有，译文版权归译者所有。
 
 在ManUel Kiessling的[《The Node Beginner Book》](https://link.jianshu.com/?t=http%3A%2F%2Fwww.nodebeginner.org%2Findex-zh-cn.html)中提到了Node.js的事件轮询。
-
+<!-- more -->
 其中提到Mixu的博文：[《Understanding the node.js event loop》](https://link.jianshu.com/?t=http%3A%2F%2Fblog.mixu.net%2F2011%2F02%2F01%2Funderstanding-the-node-js-event-loop%2F)
 
 原文出处：http://blog.mixu.net/2011/02/01/understanding-the-node-js-event-loop/

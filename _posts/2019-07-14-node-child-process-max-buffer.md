@@ -10,7 +10,7 @@ pinned: false
 ---
 > 转载于 [使用node子进程spawn,exec踩过的坑](https://segmentfault.com/a/1190000004160026)，版权归原作者所有。
 
-**编者按**：我有个项目，大概的架构是用 node.js （Electron）拉了个子程序 （python 打包的），但是持续运行一段时间后，子程序就会挂掉。而且每次都是在 print 的时候报错。后来根据这个现象怀疑是 stdio Buffer 的问题，果然在 node.js 文档中提到了 maxBuffer。最后诊断原因是，在 Electron 应用打包后，子程序输出的 stdio 没有消耗。持续运行一段时间后，超过了 maxBuffer，导致子程序被杀死。（在调试环境中是不会出现这个问题的，因为调试环境的 stdio 被打印到了 Electrion main process 的调试窗口里。）
+**编者按**：我有个项目，大概的架构是用 node.js （Electron）拉了个子程序 （python 打包的），但是持续运行一段时间后，子程序就会挂掉。而且每次都是在 print 的时候报错。后来根据这个现象怀疑是 stdio Buffer 的问题，果然在 node.js 文档中提到了 maxBuffer。<!-- more -->最后诊断原因是，在 Electron 应用打包后，子程序输出的 stdio 没有消耗。持续运行一段时间后，超过了 maxBuffer，导致子程序被杀死。（在调试环境中是不会出现这个问题的，因为调试环境的 stdio 被打印到了 Electrion main process 的调试窗口里。）
 
 解决办法是，检测是否处于打包的环境（参考你打包工具，如 pyInstaller 的文档），如果处于打包环境，则将标准输出重定向到 devnull：
 
