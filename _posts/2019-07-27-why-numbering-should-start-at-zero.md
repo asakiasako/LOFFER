@@ -13,7 +13,7 @@ pinned: false
 ## 前言
 
 在我们平时接触使用的大多数编程语言中，编号都是从 0 开始的。接受了这是一个惯例后，很少有人会去想为什么是从 0 开始？如果这是惯例，为什么不是其他的惯例呢？Edsger W. Dijkstra 教授的这个小备忘录也许可以解开我们的疑惑。
-
+<!-- more -->
 原文链接：http://www.cs.utexas.edu/users/EWD/transcriptions/EWD08xx/EWD831.html
 
 ## 译文
