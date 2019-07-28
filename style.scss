@@ -475,6 +475,14 @@ nav {
       }
     }
   }
+
+  img[url$="center"]{
+    margin:0 auto;
+  }
+
+  img[url$="right"]{
+    margin:0 0 0 auto;
+  }
 }
 
 .posts > .post {
