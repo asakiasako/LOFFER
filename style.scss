@@ -476,11 +476,11 @@ nav {
     }
   }
 
-  img[url$="center"]{
+  img[src$="center"]{
     margin:0 auto;
   }
 
-  img[url$="right"]{
+  img[src$="right"]{
     margin:0 0 0 auto;
   }
 }
