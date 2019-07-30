@@ -1,6 +1,6 @@
 
 class AddCaptionToImage < Jekyll::Converter
-  priority :high
+  priority :highest
 
   def matches(ext)
     ext.downcase == ".md"
