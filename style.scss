@@ -483,6 +483,13 @@ nav {
   img[src$="right"]{
     margin:0 0 0 auto;
   }
+
+  .caption {
+    font-size: 85%;
+    font-weight: 300;
+    margin: 10px 0;
+    color: $base-lighten-color;
+  }
 }
 
 .posts > .post {
