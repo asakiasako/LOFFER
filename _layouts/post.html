@@ -25,6 +25,24 @@ layout: default
 
   {% include disqus.html %}
   {% include gitalk.html %}
+
+  <script>
+    const post_imgs = document.querySelectorAll('div.entry img')
+    for (let i of post_imgs) {
+      let title_node = document.createElement("div")
+      let text_node = document.createTextNode(i.getAttribute('alt'))
+      title_node.appendChild(text_node)
+      title_node.classList.add('caption')
+      let img_src = i.getAttribute('src')
+      if (img_src.endsWith('center')) {
+        title_node.classList.add('center')
+      }
+      else if (img_src.endsWith('right')) {
+        title_node.classList.add('right')
+      }
+      i.after(title_node)
+    }
+  </script>
 </article>
 
 <div class="pagination">
