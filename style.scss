@@ -220,9 +220,14 @@ td, th {
   border: 1px solid $table-border-color;
 }
 
-tbody tr:nth-child(odd) td,
+table.stripe tbody tr:nth-child(odd) td,
 tbody tr:nth-child(odd) th {
   background-color: $table-background-color;
+}
+
+table.t-v-middle tbody tr td,
+table.t-v-middle tbody tr th {
+  vertical-align: middle;
 }
 
 // Blockquote
